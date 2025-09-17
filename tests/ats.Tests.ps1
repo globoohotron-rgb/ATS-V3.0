@@ -1,23 +1,22 @@
-Describe "ATS helpers (scripts/ats.psm1) [v3]" {
-  BeforeAll { Import-Module (Join-Path $PSScriptRoot "..\scripts\ats.psm1") -Force -DisableNameChecking }
-
+BeforeAll {
+  Import-Module (Join-Path $PSScriptRoot "..\scripts\ats.psm1") -Force
+}
+Describe "ATS helpers (scripts/ats.psm1) [Pester5]" {
   It "SMA returns correct length and last value (period=2)" {
     $arr = 1,2,3,4,5
     $sma = SMA $arr 2
-    ($sma.Length -eq 5) | Should Be $true
-    ([double]::IsNaN($sma[0])) | Should Be $true
-    (( $sma[4] -gt 4.49 ) -and ( $sma[4] -le 4.51 )) | Should Be $true
+    $sma.Length | Should -Be 5
+    [double]::IsNaN($sma[0]) | Should -BeTrue
+    $sma[4] | Should -BeGreaterThan 4.49
+    $sma[4] | Should -BeLessOrEqual 4.51
   }
-
-  It "StdDev is ~0 for constant array (epsilon tolerance)" {
-    $eps = 1e-12
-    $sd  = StdDev @(0,0,0,0,0)
-    ([math]::Abs($sd) -lt $eps) | Should Be $true
+  It "StdDev is ~0 for constant array (epsilon)" {
+    $sd = StdDev @(0,0,0,0,0)
+    [math]::Abs($sd) -lt 1e-12 | Should -BeTrue
   }
-
   It "MaxDrawdown simple descending equity -> ~30%" {
-    $eq = 1.0,0.9,0.8,0.7
-    $dd = MaxDrawdown $eq
-    (( $dd -gt 0.299 ) -and ( $dd -le 0.301 )) | Should Be $true
+    $dd = MaxDrawdown @(1.0,0.9,0.8,0.7)
+    $dd | Should -BeGreaterThan 0.299
+    $dd | Should -BeLessOrEqual 0.301
   }
 }
