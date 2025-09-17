@@ -31,7 +31,7 @@ function Resolve-TxColumns {
 }
 
 function Get-TxTurnover {
-  param([System.Collections.IEnumerable]$Trades, [string]$PriceCol, [string]$QtyCol)
+  param([IEnumerable]$Trades, [string]$PriceCol, [string]$QtyCol)
   if (-not $Trades) { return 0.0 }
   $sum = 0.0
   foreach ($t in $Trades) {
@@ -45,7 +45,7 @@ function Get-TxTurnover {
 function Get-TxCost { param([double]$Turnover,[double]$Bps) $Turnover * ($Bps / 10000.0) }
 
 function Add-TxCostToTrades {
-  param([System.Collections.IEnumerable]$Trades,[double]$Bps,[string]$PriceCol,[string]$QtyCol)
+  param([IEnumerable]$Trades,[double]$Bps,[string]$PriceCol,[string]$QtyCol)
   if (-not $Trades) { return @() }
   $out = @()
   foreach ($t in $Trades) {
@@ -63,7 +63,7 @@ function Add-TxCostToTrades {
 }
 
 function Apply-TxToMetrics {
-  param([Parameter(Mandatory)]$Metrics,[Parameter(Mandatory)][System.Collections.IEnumerable]$Trades,[double]$Bps)
+  param([Parameter(Mandatory)]$Metrics,[Parameter(Mandatory)][IEnumerable]$Trades,[double]$Bps)
   $bps = Get-AtsConfigTxBps -OverrideBps $Bps
   $cols = Resolve-TxColumns -Row ($Trades | Select-Object -First 1)
   if (-not $cols.Price -or -not $cols.Qty) { return $Metrics }
@@ -80,7 +80,7 @@ function Apply-TxToMetrics {
 }
 
 function Use-TxInsideBacktest {
-  param([Parameter(Mandatory)][System.Collections.IEnumerable]$Trades,[Parameter(Mandatory)]$Metrics,[double]$Bps)
+  param([Parameter(Mandatory)][IEnumerable]$Trades,[Parameter(Mandatory)]$Metrics,[double]$Bps)
   $bps = Get-AtsConfigTxBps -OverrideBps $Bps
   $cols = Resolve-TxColumns -Row ($Trades | Select-Object -First 1)
   if ($cols.Price -and $cols.Qty) { $null = Add-TxCostToTrades -Trades $Trades -Bps $bps -PriceCol $cols.Price -QtyCol $cols.Qty }
@@ -89,5 +89,4 @@ function Use-TxInsideBacktest {
 # === TXCOST HELPERS END ===
 
 Export-ModuleMember -Function Use-TxInsideBacktest,Apply-TxToMetrics,Add-TxCostToTrades,Get-AtsConfigTxBps
-
 

@@ -1,3 +1,4 @@
+#requires -Version 7
 # scripts/qc.psm1 — Data Quality Bot (InvariantCulture)
 $ErrorActionPreference='Stop'
 $CI = [System.Globalization.CultureInfo]::InvariantCulture

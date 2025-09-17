@@ -7,7 +7,7 @@ function SMA{ param([double[]]$vals,[int]$win) $n=$vals.Count; $out=New-Object d
 function StdDev{ param([double[]]$arr) $a=@($arr | Where-Object { $_ -ne $null }); $n=$a.Count; if($n -lt 2){return 0.0}; $m=($a | Measure-Object -Average).Average; $s=0.0; foreach($x in $a){ $d=$x-$m; $s+=$d*$d } [Math]::Sqrt($s/($n-1)) }
 function MaxDrawdown{ param([double[]]$equity) if($equity.Count -eq 0){return 0.0}; $peak=$equity[0]; $m=0.0; foreach($e in $equity){ if($e -gt $peak){$peak=$e}; if($peak -gt 0){ $dd=($peak-$e)/$peak; if($dd -gt $m){$m=$dd} } } $m }
 function New-RunContext{ param([string]$Gate,[string]$SubFolder) $today=Get-Date -Format "yyyy-MM-dd"; $runId="run-$([DateTime]::UtcNow.ToString("yyyyMMdd-HHmmss"))"; $root=Join-Path (Join-Path "runs" $today) $runId; Ensure-Dir $root; $gateDir= if($SubFolder){ Join-Path $root $SubFolder } else { $root }; $msg=Join-Path $gateDir "messages"; $rep=Join-Path "reports" $today; Ensure-Dir $gateDir; Ensure-Dir $msg; Ensure-Dir $rep; [pscustomobject]@{ Today=$today; RunId=$runId; NowUtc=[DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"); Root=$root; GateDir=$gateDir; Messages=$msg; Reports=$rep } }
-Export-ModuleMember -Function *
+Export-ModuleMember -Function Ensure-Dir,Write-Doc,Write-Json,SMA,StdDev,MaxDrawdown,New-RunContext
 
 # === TXCOST HELPERS START ===
 function Get-AtsConfigTxBps {
@@ -31,7 +31,7 @@ function Resolve-TxColumns {
 }
 
 function Get-TxTurnover {
-  param([System.Collections.IEnumerable]$Trades, [string]$PriceCol, [string]$QtyCol)
+  param([IEnumerable]$Trades, [string]$PriceCol, [string]$QtyCol)
   if (-not $Trades) { return 0.0 }
   $sum = 0.0
   foreach ($t in $Trades) {
@@ -45,7 +45,7 @@ function Get-TxTurnover {
 function Get-TxCost { param([double]$Turnover,[double]$Bps) $Turnover * ($Bps / 10000.0) }
 
 function Add-TxCostToTrades {
-  param([System.Collections.IEnumerable]$Trades,[double]$Bps,[string]$PriceCol,[string]$QtyCol)
+  param([IEnumerable]$Trades,[double]$Bps,[string]$PriceCol,[string]$QtyCol)
   if (-not $Trades) { return @() }
   $out = @()
   foreach ($t in $Trades) {
@@ -63,7 +63,7 @@ function Add-TxCostToTrades {
 }
 
 function Apply-TxToMetrics {
-  param([Parameter(Mandatory)]$Metrics,[Parameter(Mandatory)][System.Collections.IEnumerable]$Trades,[double]$Bps)
+  param([Parameter(Mandatory)]$Metrics,[Parameter(Mandatory)][IEnumerable]$Trades,[double]$Bps)
   $bps = Get-AtsConfigTxBps -OverrideBps $Bps
   $cols = Resolve-TxColumns -Row ($Trades | Select-Object -First 1)
   if (-not $cols.Price -or -not $cols.Qty) { return $Metrics }
@@ -80,14 +80,10 @@ function Apply-TxToMetrics {
 }
 
 function Use-TxInsideBacktest {
-  param([Parameter(Mandatory)][System.Collections.IEnumerable]$Trades,[Parameter(Mandatory)]$Metrics,[double]$Bps)
+  param([Parameter(Mandatory)][IEnumerable]$Trades,[Parameter(Mandatory)]$Metrics,[double]$Bps)
   $bps = Get-AtsConfigTxBps -OverrideBps $Bps
   $cols = Resolve-TxColumns -Row ($Trades | Select-Object -First 1)
   if ($cols.Price -and $cols.Qty) { $null = Add-TxCostToTrades -Trades $Trades -Bps $bps -PriceCol $cols.Price -QtyCol $cols.Qty }
   Apply-TxToMetrics -Metrics $Metrics -Trades $Trades -Bps $bps
 }
 # === TXCOST HELPERS END ===
-
-Export-ModuleMember -Function Use-TxInsideBacktest,Apply-TxToMetrics,Add-TxCostToTrades,Get-AtsConfigTxBps
-
-
