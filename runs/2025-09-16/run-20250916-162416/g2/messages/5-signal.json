@@ -1,0 +1,22 @@
+{
+  "task_id": "T-20250916-003",
+  "from": "signal",
+  "to": "monitor",
+  "phase": "run",
+  "status": "DONE",
+  "attempt": 1,
+  "timestamp_utc": "2025-09-16T16:24:17Z",
+  "payload_ref": "runs/2025-09-16/run-20250916-162416/g2/signals.csv",
+  "artifacts": [
+    "runs/2025-09-16/run-20250916-162416/g2/signals.csv"
+  ],
+  "metrics": {
+    "fast": 10,
+    "rows": 200,
+    "slow": 20
+  },
+  "notes": [
+    "sma cross"
+  ],
+  "signature": "v1"
+}

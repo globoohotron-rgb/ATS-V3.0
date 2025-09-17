@@ -1,0 +1,6 @@
+# DailySummary — шаблон
+- Date: YYYY-MM-DD
+- Goal: ...
+- What was done: ...
+- Gate: PASS/FAIL (+ чому)
+- Next: 1 пропозиція цілі на завтра

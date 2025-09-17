@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare folders
+        run: |
+          Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+          New-Item -ItemType Directory -Force -Path reports | Out-Null
+          New-Item -ItemType Directory -Force -Path data/processed | Out-Null
+
+      - name: Install Pester (prefer v5, fallback ok)
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          $mod = Get-Module -ListAvailable -Name Pester | Sort-Object Version -Descending | Select-Object -First 1
+          if (-not $mod -or $mod.Version.Major -lt 5) {
+            Install-Module Pester -Scope CurrentUser -Force -SkipPublisherCheck
+            $mod = Get-Module -ListAvailable -Name Pester | Sort-Object Version -Descending | Select-Object -First 1
+          }
+          Import-Module $mod.Path -Force
+          Write-Host "Using Pester $($mod.Version)"
+
+      - name: Run tests
+        run: |
+          $mod = Get-Module -Name Pester
+          if ($mod.Version.Major -ge 5) {
+            $conf = New-PesterConfiguration
+            $conf.Run.Path = 'tests'
+            $conf.Output.Verbosity = 'Detailed'
+            $conf.TestResult.Enabled = $true
+            $conf.TestResult.OutputPath = 'reports/pester-results.xml'
+            Invoke-Pester -Configuration $conf
+          } else {
+            Push-Location tests
+            try { Invoke-Pester } finally { Pop-Location }
+          }
+
+      - name: Upload artifacts (reports, gates, processed data)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ats-reports
+          path: |
+            reports/**
+            docs/gates.md
+            data/processed/**
+          if-no-files-found: warn

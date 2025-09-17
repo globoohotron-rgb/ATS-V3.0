@@ -1,0 +1,360 @@
+param(
+  [ValidateSet("G1","G2","G3","G4","G5","G6","All")]
+  [string]$Gate = "All",
+  [int]$CostBps
+)
+
+$ErrorActionPreference = "Stop"
+
+# --- Modules: import only once, silence verb warnings ---
+if(-not (Get-Module -Name ats)){ Import-Module (Join-Path $PSScriptRoot "scripts/ats.psm1") -Force -DisableNameChecking }
+if(-not (Get-Module -Name qc )){ Import-Module (Join-Path $PSScriptRoot "scripts/qc.psm1")  -Force -DisableNameChecking }
+
+# --- Config (self-heal без вкладених here-strings) ---
+$cfgPath = Join-Path $PSScriptRoot 'config/config.psd1'
+if(-not (Test-Path $cfgPath)){
+  New-Item -ItemType Directory -Force -Path (Split-Path $cfgPath) | Out-Null
+  $lines = @(
+    '@{',
+    '  General = @{',
+    '    CostBps = 5',
+    '    Seed    = 42',
+    '  }',
+    '  Model = @{',
+    '    Fast = 10',
+    '    Slow = 20',
+    '    Grid = @(',
+    '      @{ f = 5;  s = 20 },',
+    '      @{ f = 8;  s = 21 },',
+    '      @{ f = 10; s = 20 },',
+    '      @{ f = 10; s = 30 },',
+    '      @{ f = 12; s = 26 },',
+    '      @{ f = 15; s = 40 }',
+    '    )',
+    '  }',
+    '  RnD = @{',
+    '    MaxFolds  = 4',
+    '    IS_Ratio  = 0.60',
+    '    OOS_Ratio = 0.10',
+    '    Step_Ratio= 0.10',
+    '  }',
+    '  Risk = @{',
+    '    G3 = @{ DailyLossLimit = 0.02; MaxDD = 0.05 }',
+    '    G6 = @{ DailyLossLimit = 0.02; KillSwitchMaxDD = 0.08; CrashReturn = -0.10; StreamBars = 60 }',
+    '  }',
+    '  Guardrails = @{',
+    '    SearchMax     = 8',
+    '    ISSharpeHalf  = 0.5',
+    '    DDBufferPP    = 2.0',
+    '    VsBH_PPMargin = 2.0',
+    '  }',
+    '}'
+  )
+  $lines | Set-Content -Path $cfgPath -Encoding UTF8
+}
+$cfg = Import-PowerShellDataFile $cfgPath
+
+# --- Apply config ---
+if(-not $PSBoundParameters.ContainsKey('CostBps')){ $CostBps = [int]$cfg.General.CostBps }
+$seed        = [int]$cfg.General.Seed
+$costRate    = [double]$CostBps / 10000.0
+
+$fastDefault = [int]$cfg.Model.Fast
+$slowDefault = [int]$cfg.Model.Slow
+$gridParams  = @($cfg.Model.Grid)
+
+$wfMaxFolds  = [int]$cfg.RnD.MaxFolds
+$wfISRatio   = [double]$cfg.RnD.IS_Ratio
+$wfOOSRatio  = [double]$cfg.RnD.OOS_Ratio
+$wfStepRatio = [double]$cfg.RnD.Step_Ratio
+
+$g3DailyLim  = [double]$cfg.Risk.G3.DailyLossLimit
+$g3MaxDD     = [double]$cfg.Risk.G3.MaxDD
+$g6DailyLim  = [double]$cfg.Risk.G6.DailyLossLimit
+$g6KillDD    = [double]$cfg.Risk.G6.KillSwitchMaxDD
+$g6Crash     = [double]$cfg.Risk.G6.CrashReturn
+$g6Stream    = [int]$cfg.Risk.G6.StreamBars
+
+$grSearchMax = [int]$cfg.Guardrails.SearchMax
+$grDDBuf     = [double]$cfg.Guardrails.DDBufferPP
+$grVsBH      = [double]$cfg.Guardrails.VsBH_PPMargin
+
+# --- Local helper: генеруємо сирі дані без самовиклику скрипта ---
+function Ensure-RawDataPresent([int]$Seed,[string]$RawPath){
+  if(Test-Path $RawPath){ return }
+  Ensure-Dir (Split-Path $RawPath)
+  $r=[Random]::new($Seed); $list=New-Object System.Collections.Generic.List[object]; $p=100.0
+  for($i=0;$i -lt 200;$i++){
+    $dt=(Get-Date).Date.AddDays(-199+$i)
+    $ret=(($r.NextDouble()-0.5)*0.02)+0.0005
+    $cl=[Math]::Max(1.0,$p*(1.0+$ret))
+    $list.Add([pscustomobject]@{Date=$dt.ToString("yyyy-MM-dd");Open=$p;High=($p,$cl|Measure-Object -Maximum).Maximum;Low=($p,$cl|Measure-Object -Minimum).Minimum;Close=[Math]::Round($cl,4);Volume=1000+$r.Next(0,1000)}) | Out-Null
+    $p=$cl
+  }
+  $list | Export-Csv -Path $RawPath -NoTypeInformation -Encoding UTF8
+}
+
+# ---------- G1 ----------
+function Invoke-G1{
+  $ctx = New-RunContext -Gate "G1" -SubFolder "g1"
+  $hello = Join-Path $ctx.GateDir "hello.txt"
+  Write-Doc $hello @("hello-world","run_id: $($ctx.RunId)","utc: $($ctx.NowUtc)")
+  $ok = (Test-Path $hello) -and ((Get-Content -Raw $hello) -match "hello")
+  if(Test-Path "docs/gates.md"){ Add-Content "docs/gates.md" -Value "`nG1 verdict: $($(if($ok){"PASS"}else{"FAIL"})) on $($ctx.Today)" }
+  Write-Host "G1 => $hello (PASS=$ok)"
+}
+
+# ---------- G2 (QC + NET) ----------
+function Invoke-G2{
+  $ctx = New-RunContext -Gate "G2" -SubFolder "g2"
+  Ensure-Dir "data/raw"; Ensure-Dir "data/processed"
+  $raw = "data/raw/ohlcv_sample.csv"
+  Ensure-RawDataPresent $seed $raw
+
+  $qc = Invoke-DataQC -Path $raw -OutDir $ctx.Reports -MaxAbsReturn 0.25 -RequireMonotonic
+  if(-not $qc.Pass){
+    if(Test-Path "docs/gates.md"){ Add-Content "docs/gates.md" -Value "`nG2 verdict: FAIL (QC) on $($ctx.Today)" }
+    Write-Host "G2 QC => FAIL ($($qc.Report))"
+    return @{Verdict='FAIL'}
+  }
+
+  $rows = Import-Csv $raw
+  $cl=@(); $dt=@(); $rows | ForEach-Object { $cl+=[double]$_.Close; $dt+=$_.Date }
+  $n=$cl.Count
+  $smaF = SMA $cl $fastDefault; $smaS = SMA $cl $slowDefault
+
+  $pos = New-Object int[] $n
+  $ret = New-Object double[] $n
+  $strNet = New-Object double[] $n
+  $eqNet  = New-Object double[] $n
+  $trade  = New-Object bool[] $n
+
+  $pos[0]=0; $ret[0]=0.0; $strNet[0]=0.0; $eqNet[0]=1.0; $trade[0]=$false
+  for($i=1;$i -lt $n;$i++){
+    if([double]::IsNaN($smaF[$i]) -or [double]::IsNaN($smaS[$i])){ $pos[$i]=$pos[$i-1] } else { $pos[$i]=$(if($smaF[$i]-gt $smaS[$i]){1}else{0}) }
+    $ret[$i] = ($cl[$i]/$cl[$i-1]) - 1.0
+    $trade[$i] = ($pos[$i] -ne $pos[$i-1])
+    $strNet[$i] = $ret[$i]*$pos[$i] - ($(if($trade[$i]){[double]$CostBps/10000.0}else{0.0}))
+    $eqNet[$i]   = $eqNet[$i-1] * (1.0 + $strNet[$i])
+  }
+
+  $proc="data/processed/signals_sample.csv"
+  $buf=New-Object System.Collections.Generic.List[object]
+  for($i=0;$i -lt $n;$i++){
+    $buf.Add([pscustomobject]@{Date=$dt[$i];Close=[Math]::Round($cl[$i],4);Position=$pos[$i];Trade=$trade[$i]}) | Out-Null
+  }
+  $buf | Export-Csv -Path $proc -NoTypeInformation -Encoding UTF8
+
+  $final=$eqNet[$n-1]; $pnl=[Math]::Round(100*($final-1.0),2); $dd=[Math]::Round(100*(MaxDrawdown $eqNet),2)
+  $avg = (($strNet[1..($n-1)] | Measure-Object -Average).Average)
+  $std = StdDev @($strNet[1..($n-1)]); $sh=0.0; if($std -gt 0){ $sh=($avg/$std)*[Math]::Sqrt(252) }; $sh=[Math]::Round($sh,2)
+
+  $html = Join-Path $ctx.Reports ("G2-"+$ctx.RunId+".html")
+  Write-Doc $html @('<!doctype html>','<html><head><meta charset="utf-8"><title>G2</title></head><body>',
+    "<h1>G2 Mini-ATS (NET)</h1>",
+    "<p>Seed: $seed • Cost: $CostBps bps • Fast=$fastDefault Slow=$slowDefault</p>",
+    "<p>PnL Net %=$pnl • MaxDD %=$dd • Sharpe (Net)=$sh</p>",'</body></html>')
+
+  $ok = (Test-Path $proc) -and (Test-Path $html)
+  if(Test-Path "docs/gates.md"){ Add-Content "docs/gates.md" -Value "`nG2 verdict: $($(if($ok){"PASS"}else{"FAIL"})) on $($ctx.Today)" }
+  Write-Host "G2 => proc=$proc report=$html (PASS=$ok)"
+  return @{Verdict=$(if($ok){"PASS"}else{"FAIL"})}
+}
+
+# ---------- G3 ----------
+function Invoke-G3{
+  $ctx = New-RunContext -Gate "G3" -SubFolder "g3"
+  $proc="data/processed/signals_sample.csv"; if(-not (Test-Path $proc)){ throw "Need $proc — спочатку G2" }
+  $rows = Import-Csv $proc
+  $start=$rows.Count-3; $end=$rows.Count-1
+  $sub=$rows[$start..$end]
+  $prevClose=[double](Import-Csv "data/raw/ohlcv_sample.csv")[$start-1].Close
+  $prevPos   =[int]$rows[$start-1].Position
+  $eq=1.0; $peak=1.0; $hits=0; $stop=$false
+  $log=New-Object System.Collections.Generic.List[double]
+  for($i=0;$i -lt $sub.Count;$i++){
+    $c=[double]$sub[$i].Close; $p=[int]$sub[$i].Position
+    $ret = ($c / $(if($i -eq 0){ $prevClose } else { [double]$sub[$i-1].Close })) - 1.0
+    $trade = if($i -eq 0){ ($p -ne $prevPos) } else { ($p -ne [int]$sub[$i-1].Position) }
+    $net   = $ret*$p - ($(if($trade){[double]$CostBps/10000.0}else{0.0}))
+    $adj   = $net; if($adj -lt -$g3DailyLim){ $adj=-$g3DailyLim; $hits++ }; if($stop){ $adj=0.0 }
+    $eq=$eq*(1.0+$adj); if($eq -gt $peak){ $peak=$eq }
+    $dd= if($peak -gt 0){ ($peak-$eq)/$peak } else {0.0}; if(-not $stop -and $dd -gt $g3MaxDD){ $stop=$true }
+    $log.Add($eq) | Out-Null
+  }
+  $final=$eq; $pnl=[Math]::Round(100*($final-1.0),2); $ddp=[Math]::Round(100*(MaxDrawdown @($log)),2)
+  $html = Join-Path $ctx.Reports ("G3-"+$ctx.RunId+".html")
+  Write-Doc $html @('<!doctype html>','<html><head><meta charset="utf-8"><title>G3</title></head><body>',
+    "<h1>G3 Paper-3d (NET)</h1>",
+    "<p>Daily limit=$([Math]::Round($g3DailyLim*100,2))% • MaxDD=$([Math]::Round($g3MaxDD*100,2))% • Cost=$CostBps bps</p>",
+    "<p>PnL Net %=$pnl • MaxDD %=$ddp</p>",'</body></html>')
+  $ok = (Test-Path $html)
+  if(Test-Path "docs/gates.md"){ Add-Content "docs/gates.md" -Value "`nG3 verdict: $($(if($ok){"PASS"}else{"FAIL"})) on $($ctx.Today)" }
+  Write-Host "G3 => report=$html (PASS=$ok)"
+}
+
+# ---------- Helpers for G5 ----------
+function Build-Equity([double[]]$cl,[int]$f,[int]$s,[double]$cost){
+  $n=$cl.Count; $smaF=SMA $cl $f; $smaS=SMA $cl $s
+  $pos=New-Object int[] $n; $rets=New-Object double[] $n; $str=New-Object double[] $n; $eq=New-Object double[] $n
+  $pos[0]=0; $rets[0]=0.0; $str[0]=0.0; $eq[0]=1.0
+  for($i=1;$i -lt $n;$i++){
+    if([double]::IsNaN($smaF[$i]) -or [double]::IsNaN($smaS[$i])){ $pos[$i]=$pos[$i-1] } else { $pos[$i]=$(if($smaF[$i]-gt $smaS[$i]){1}else{0}) }
+    $rets[$i]=($cl[$i]/$cl[$i-1])-1.0
+    $trade = ($pos[$i] -ne $pos[$i-1])
+    $str[$i] = $rets[$i]*$pos[$i] - ($(if($trade){$cost}else{0.0}))
+    $eq[$i]  = $eq[$i-1]*(1.0+$str[$i])
+  }
+  [pscustomobject]@{rets=$rets;str=$str;eq=$eq}
+}
+function Seg-Metrics([int]$a,[int]$b,$str,$eq){
+  if($a -lt 0){ $a=0 }; if($b -ge $eq.Count){ $b=$eq.Count-1 }
+  if($b -le $a){ return [pscustomobject]@{ pnl=0.0; sharpe=0.0; dd=0.0 } }
+  $eq0=$eq[$a]; if($eq0 -le 0){ $eq0=1.0 }
+  $eq1=$eq[$b]; $fin=$eq1/$eq0
+  $loc=@(); for($k=$a;$k -le $b;$k++){ $loc+=,($eq[$k]/$eq0) }
+  $segRets=@($str[($a+1)..$b]); $avg=(($segRets)|Measure-Object -Average).Average
+  $std=StdDev @($segRets); $sh=0.0; if($std -gt 0){ $sh=($avg/$std)*[Math]::Sqrt(252) }
+  [pscustomobject]@{ pnl=100*($fin-1.0); sharpe=$sh; dd=100*(MaxDrawdown $loc) }
+}
+function Median([double[]]$arr){ $a=@($arr|Sort-Object); $m=$a.Count; if($m -eq 0){0.0}else{ if($m%2){$a[[int][Math]::Floor($m/2)]}else{($a[$m/2-1]+$a[$m/2])/2.0} } }
+function BH-PnL([double[]]$cl,[int]$s,[int]$e){
+  $bh=1.0; for($i=$s+1;$i -le $e;$i++){ $bh*=($cl[$i]/$cl[$i-1]) }; 100.0*($bh-1.0)
+}
+
+# ---------- G4 ----------
+function Invoke-G4{
+  $ctx = New-RunContext -Gate "G4" -SubFolder "g4"
+  Invoke-G1
+  $g2 = Invoke-G2
+  if($g2.Verdict -ne 'PASS'){
+    $g3='SKIP'; $pass=$false
+  } else {
+    Invoke-G3; $g3='PASS'; $pass=$true
+  }
+  $html = Join-Path $ctx.Reports ("G4-"+$ctx.RunId+".html")
+  Write-Doc $html @('<!doctype html>','<html><head><meta charset="utf-8"><title>G4</title></head><body>',
+    "<h1>G4 Orchestrator</h1>","<p>G2=$($g2.Verdict) • G3=$g3</p>",'</body></html>')
+  if(Test-Path "docs/gates.md"){ Add-Content "docs/gates.md" -Value "`nG4 verdict: $($(if($pass){"PASS"}else{"FAIL"})) on $((Get-Date).ToString('yyyy-MM-dd'))" }
+  Write-Host "G4 => summary=$html (PASS=$pass)"
+}
+
+# ---------- G5 Walk-Forward ----------
+function Invoke-G5{
+  $ctx = New-RunContext -Gate "G5" -SubFolder "g5"
+  $raw="data/raw/ohlcv_sample.csv"; Ensure-RawDataPresent $seed $raw
+  $rows=Import-Csv $raw; $cl=@(); $rows | ForEach-Object { $cl+=[double]$_.Close }
+  $n=$cl.Count
+
+  $maxFolds=[int]$wfMaxFolds
+  $isLen =[int][Math]::Round($wfISRatio*$n)
+  $oosLen=[int][Math]::Round($wfOOSRatio*$n)
+  $step  =[int][Math]::Max(1,[Math]::Round($wfStepRatio*$n))
+
+  $folds=New-Object System.Collections.Generic.List[object]; $start=0
+  while($folds.Count -lt $maxFolds){
+    $isS=$start; $isE=$isS+$isLen-1; $oosS=$isE+1; $oosE=$oosS+$oosLen-1
+    if($oosS -ge $n){ break }; if($oosE -ge $n){ $oosE=$n-1 }
+    if($isS -lt 0 -or $isE -ge $n -or $oosS -gt $oosE){ break }
+    $folds.Add([pscustomobject]@{isS=$isS;isE=$isE;oosS=$oosS;oosE=$oosE}) | Out-Null
+    $start+=$step
+  }
+  if($folds.Count -eq 0){
+    $is=[int][Math]::Round([Math]::Max(0.7,[Math]::Min(0.8,140.0/[double]$n))*$n)
+    $folds.Add([pscustomobject]@{isS=0;isE=$is-1;oosS=$is;oosE=$n-1}) | Out-Null
+  }
+
+  $agg=New-Object System.Collections.Generic.List[object]
+  foreach($g in $gridParams){
+    $f=[int]$g.f; $s=[int]$g.s; if($f -ge $s){ continue }
+    $all=Build-Equity $cl $f $s $costRate
+    $ISp=@(); $ISsh=@(); $ISdd=@(); $OOSp=@(); $OOSsh=@(); $OOSdd=@(); $BHp=@()
+    foreach($fd in $folds){
+      $mIS =  Seg-Metrics $fd.isS  $fd.isE  $all.str $all.eq
+      $mOO =  Seg-Metrics $fd.oosS $fd.oosE $all.str $all.eq
+      $ISp+=$mIS.pnl;  $ISsh+=$mIS.sharpe; $ISdd+=$mIS.dd
+      $OOSp+=$mOO.pnl; $OOSsh+=$mOO.sharpe; $OOSdd+=$mOO.dd
+      $BHp+= (BH-PnL $cl $fd.oosS $fd.oosE)
+    }
+    $agg.Add([pscustomobject]@{
+      f=$f;s=$s;
+      IS_median_pnl=(Median @([double[]]$ISp));
+      IS_median_sh =(Median @([double[]]$ISsh));
+      IS_median_dd =(Median @([double[]]$ISdd));
+      OOS_median_pnl=(Median @([double[]]$OOSp));
+      OOS_median_sh =(Median @([double[]]$OOSsh));
+      OOS_median_dd =(Median @([double[]]$OOSdd));
+      BH_median_pnl =(Median @([double[]]$BHp));
+      per_fold = @(
+        for($i=0;$i -lt $folds.Count;$i++){
+          [pscustomobject]@{ idx=$i+1; IS_pnl=$ISp[$i]; IS_sh=$ISsh[$i]; IS_dd=$ISdd[$i]; OOS_pnl=$OOSp[$i]; OOS_sh=$OOSsh[$i]; OOS_dd=$OOSdd[$i]; BH_pnl=$BHp[$i] }
+        }
+      )
+    }) | Out-Null
+  }
+
+  $best = $agg | Sort-Object @{Expression='IS_median_sh';Descending=$true}, @{Expression='IS_median_pnl';Descending=$true} | Select-Object -First 1
+  $searchOk = ($agg.Count -le $grSearchMax)
+  $rulePnl = ($best.OOS_median_pnl -ge 0.0)
+  $ruleSh  = ($best.OOS_median_sh -ge 0.0)
+  $ruleDD  = ($best.OOS_median_dd -le (1.5*$best.IS_median_dd + $grDDBuf))
+  $ruleBH  = ($best.OOS_median_pnl -ge ($best.BH_median_pnl - $grVsBH))
+  $accepted = ($searchOk -and $rulePnl -and $ruleSh -and $ruleDD -and $ruleBH)
+  $decision = if($accepted){ "ACCEPT" } else { "REJECT" }
+
+  $html = Join-Path $ctx.Reports ("G5-WF-"+$ctx.RunId+".html")
+  $lines=@('<!doctype html>','<html><head><meta charset="utf-8"><title>G5 Walk-Forward</title>',
+    '<style>body{font-family:Arial;margin:24px} table{border-collapse:collapse} td,th{border:1px solid #ddd;padding:6px;text-align:right} th:first-child,td:first-child{text-align:left}</style>',
+    '</head><body>',
+    "<h1>G5 Walk-Forward (NET, cost=$CostBps bps)</h1>",
+    "<p>Folds: $($folds.Count) • IS ratio: $wfISRatio • OOS ratio: $wfOOSRatio • step: $wfStepRatio</p>",
+    "<h2>Winner: fast=$($best.f) slow=$($best.s)</h2>",
+    '<table><tr><th>#</th><th>IS PnL %</th><th>IS Sharpe</th><th>IS MaxDD %</th><th>OOS PnL %</th><th>OOS Sharpe</th><th>OOS MaxDD %</th><th>BH OOS %</th></tr>')
+  foreach($r in $best.per_fold){
+    $lines += "<tr><td>$($r.idx)</td><td>$([Math]::Round($r.IS_pnl,2))</td><td>$([Math]::Round($r.IS_sh,2))</td><td>$([Math]::Round($r.IS_dd,2))</td><td>$([Math]::Round($r.OOS_pnl,2))</td><td>$([Math]::Round($r.OOS_sh,2))</td><td>$([Math]::Round($r.OOS_dd,2))</td><td>$([Math]::Round($r.BH_pnl,2))</td></tr>"
+  }
+  $lines += "<tr style='background:#eef'><td><b>Median</b></td><td>$([Math]::Round($best.IS_median_pnl,2))</td><td>$([Math]::Round($best.IS_median_sh,2))</td><td>$([Math]::Round($best.IS_median_dd,2))</td><td>$([Math]::Round($best.OOS_median_pnl,2))</td><td>$([Math]::Round($best.OOS_median_sh,2))</td><td>$([Math]::Round($best.OOS_median_dd,2))</td><td>$([Math]::Round($best.BH_median_pnl,2))</td></tr>"
+  $lines += "</table><h3>Decision: <b>$decision</b></h3><p>rules: searchOk=$searchOk, pnl=$rulePnl, sharpe=$ruleSh, dd=$ruleDD, vsBH=$ruleBH</p></body></html>"
+  Write-Doc $html $lines
+
+  if(Test-Path "docs/gates.md"){ Add-Content "docs/gates.md" -Value "`nG5 verdict: $($(if($accepted){"PASS"}else{"FAIL"})) on $((Get-Date).ToString('yyyy-MM-dd'))" }
+  Write-Host "G5 (WF) => decision=$decision • folds=$($folds.Count) • report=$html"
+}
+
+# ---------- G6 ----------
+function Invoke-G6{
+  $ctx = New-RunContext -Gate "G6" -SubFolder "g6"
+  $raw="data/raw/ohlcv_sample.csv"; Ensure-RawDataPresent $seed $raw
+  $rows=Import-Csv $raw; $cl=@(); $rows | ForEach-Object { $cl+=[double]$_.Close }
+  $n=$cl.Count; $stream=[Math]::Min($g6Stream,$n-2); $start=[Math]::Max(1,$n-$stream-1); $end=$start+$stream
+  $smaF=SMA $cl $fastDefault; $smaS=SMA $cl $slowDefault
+  $eq=1.0; $peak=1.0; $hits=0; $kill=$false; $prev=[double]$cl[$start]
+  $eqlist=New-Object System.Collections.Generic.List[double]
+  for($i=$start+1;$i -le $end;$i++){
+    $pos=0; if(-not [double]::IsNaN($smaF[$i]) -and -not [double]::IsNaN($smaS[$i])){ $pos=$(if($smaF[$i]-gt $smaS[$i]){1}else{0}) }
+    $ret=($cl[$i]/$prev)-1.0
+    if($i -eq ($start + [int]([Math]::Round($stream/2,0)))){ $ret=$g6Crash }
+    if($i -eq ($start + [int]([Math]::Round($stream/2,0)))){ $adj=$ret } else { $rawr=$ret*$pos; if($rawr -lt -$g6DailyLim){ $hits++; $adj=-$g6DailyLim } else { $adj=$rawr } }
+    $eq=$eq*(1.0+$adj); if($eq -gt $peak){ $peak=$eq }
+    $dd= if($peak -gt 0){ ($peak-$eq)/$peak } else { 0.0 }; if(-not $kill -and $dd -gt $g6KillDD){ $kill=$true }
+    $eqlist.Add($eq) | Out-Null; $prev=[double]$cl[$i]
+  }
+  $final=$eq; $pnl=[Math]::Round(100*($final-1.0),2); $mxdd=[Math]::Round(100*(MaxDrawdown @($eqlist)),2)
+  $html = Join-Path $ctx.Reports ("G6-"+$ctx.RunId+".html")
+  Write-Doc $html @('<!doctype html>','<html><head><meta charset="utf-8"><title>G6</title></head><body>',
+    "<h1>G6 Live Dry</h1>","<p>PnL%=$pnl; MaxDD%=$mxdd; Kill=$kill; Hits=$hits</p>",'</body></html>')
+  $pass=$kill
+  if(Test-Path "docs/gates.md"){ Add-Content "docs/gates.md" -Value "`nG6 verdict: $($(if($pass){"PASS"}else{"FAIL"})) on $((Get-Date).ToString('yyyy-MM-dd'))" }
+  Write-Host "G6 => report=$html (Kill=$kill PASS=$pass)"
+}
+
+switch ($Gate) {
+  "G1"  { Invoke-G1 | Out-Null }
+  "G2"  { Invoke-G2 | Out-Null }
+  "G3"  { Invoke-G3 | Out-Null }
+  "G4"  { Invoke-G4 | Out-Null }
+  "G5"  { Invoke-G5 | Out-Null }
+  "G6"  { Invoke-G6 | Out-Null }
+  "All" { Invoke-G4 | Out-Null; Invoke-G5 | Out-Null; Invoke-G6 | Out-Null }
+}
+Write-Host "Done: $Gate (CostBps=$CostBps; config=$cfgPath)"
