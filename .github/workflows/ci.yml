@@ -14,30 +14,33 @@ jobs:
     runs-on: windows-latest
     defaults:
       run:
-        shell: powershell
+        shell: pwsh   # PowerShell 7
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare (folders + diag)
+      - name: Prepare folders
         run: |
-          Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
-          $PSVersionTable
-          Write-Host "Pester modules available:"
-          Get-Module -ListAvailable Pester | Select-Object Name,Version,Path | Format-Table -AutoSize | Out-String | Write-Host
           New-Item -ItemType Directory -Force -Path reports | Out-Null
-          New-Item -ItemType Directory -Force -Path data\processed | Out-Null
+          New-Item -ItemType Directory -Force -Path data/processed | Out-Null
 
-      - name: Run tests (Windows PowerShell + Pester v3)
+      - name: Install Pester 5
         run: |
-          Push-Location tests
-          try {
-            Invoke-Pester -EnableExit
-          } finally {
-            Pop-Location
-          }
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module Pester -Scope CurrentUser -Force -SkipPublisherCheck
+          Import-Module Pester -Force
+          Write-Host "Using Pester:" (Get-Module Pester).Version
 
-      - name: Upload artifacts (reports, gates, processed)
+      - name: Run tests (Pester 5)
+        run: |
+          $conf = New-PesterConfiguration
+          $conf.Run.Path = 'tests'
+          $conf.Output.Verbosity = 'Detailed'
+          $conf.TestResult.Enabled = $true
+          $conf.TestResult.OutputPath = 'reports/pester-results.xml'
+          Invoke-Pester -Configuration $conf
+
+      - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
