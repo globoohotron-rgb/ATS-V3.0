@@ -16,14 +16,17 @@ jobs:
           $PSVersionTable
           "PSModulePath:"; ($env:PSModulePath -split ';') | ForEach-Object { "  - $_" }
           "Repo tree (depth=2):"; Get-ChildItem -Depth 2 | Select-Object FullName
+          "Have tests/ci?"; Test-Path tests/ci; Get-ChildItem tests/ci -Filter *.ps1 -ErrorAction SilentlyContinue
 
-      - name: Ensure Pester 5.5.0 (pwsh)
+      - name: Ensure Pester 5.5.0 (pwsh; allow signer change)
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           Set-PSRepository PSGallery -InstallationPolicy Trusted
-          if (-not (Get-Module -ListAvailable Pester | Where-Object { $_.Version -eq [version]'5.5.0' })) {
-            Install-Module -Name Pester -Scope CurrentUser -Force -RequiredVersion 5.5.0
+          $needInstall = -not (Get-Module -ListAvailable Pester | Where-Object { $_.Version -eq [version]'5.5.0' })
+          if ($needInstall) {
+            # дозволяємо інсталяцію попри зміну видавця підпису
+            Install-Module -Name Pester -Scope CurrentUser -Force -RequiredVersion 5.5.0 -SkipPublisherCheck -AllowClobber
           }
           Import-Module Pester -RequiredVersion 5.5.0 -Force
           Get-Module -ListAvailable Pester | Sort-Object Version -Descending | Select-Object -First 3 | Format-Table Name,Version,ModuleBase
@@ -50,3 +53,4 @@ jobs:
         with:
           name: pester-artifacts
           path: artifacts/
+
