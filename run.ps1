@@ -124,4 +124,5 @@ switch ($Gate) {
 }
 
 Write-Log "Run complete. Artifacts: $ReportPath"
+if ($env:ATS_NOEXIT -eq "1") { Write-Host "ATS_NOEXIT=1 → skip exit"; return }
 exit 0
