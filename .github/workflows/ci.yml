@@ -14,8 +14,8 @@ jobs:
         shell: pwsh
         run: |
           $PSVersionTable
-          "PSModulePath:"
-          ($env:PSModulePath -split ';') | ForEach-Object { "  - $_" }
+          "PSModulePath:"; ($env:PSModulePath -split ';') | ForEach-Object { "  - $_" }
+          "Repo tree:"; Get-ChildItem -Recurse -Depth 2 | Select-Object FullName
 
       - name: Install Pester 5.5.0
         shell: pwsh
@@ -23,8 +23,9 @@ jobs:
           $ErrorActionPreference = 'Stop'
           Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
           Set-PSRepository PSGallery -InstallationPolicy Trusted
-          Install-Module -Name Pester -Scope CurrentUser -Force -SkipPublisherCheck -RequiredVersion 5.5.0
-          Get-Module -ListAvailable Pester | Sort-Object Version -Descending | Select-Object -First 3 | Format-Table Name,Version,ModuleBase
+          # pin exact version
+          Install-Module -Name Pester -Scope CurrentUser -Force -RequiredVersion 5.5.0
+          Get-Module -ListAvailable Pester | Sort-Object Version -Descending | Select-Object -First 5 | Format-Table Name,Version,ModuleBase
 
       - name: Run tests (Pester v5, tests/ci only)
         shell: pwsh
@@ -34,4 +35,15 @@ jobs:
           $ErrorActionPreference = 'Stop'
           Get-Module Pester | Remove-Module -Force -ErrorAction SilentlyContinue
           Import-Module Pester -RequiredVersion 5.5.0 -Force
-          Invoke-Pester -CI -Path tests/ci
+          # робимо junit-лог і зберігаємо сирий вивід
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          Invoke-Pester -CI -Path tests/ci -OutputFormat NUnitXml -OutputFile artifacts/testResults.xml *>&1 | Tee-Object -FilePath artifacts/pester.log
+          # показати коротке резюме в консолі
+          Write-Host "`n--- Pester tail ---"; Get-Content artifacts/pester.log -Tail 50
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pester-artifacts
+          path: artifacts/
