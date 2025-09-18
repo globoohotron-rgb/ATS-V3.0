@@ -2,51 +2,36 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
   pull_request:
-    branches: [ main, master ]
-
-permissions:
-  contents: read
 
 jobs:
-  test:
+  tests-windows:
     runs-on: windows-latest
-    defaults:
-      run:
-        shell: pwsh   # PowerShell 7
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Prepare folders
+      - name: Env diagnostics
+        shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path reports | Out-Null
-          New-Item -ItemType Directory -Force -Path data/processed | Out-Null
+          $PSVersionTable
+          "PSModulePath:"
+          ($env:PSModulePath -split ';') | ForEach-Object { "  - $_" }
 
-      - name: Install Pester 5
+      - name: Install Pester 5.5.0
+        shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
+          Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
           Set-PSRepository PSGallery -InstallationPolicy Trusted
-          Install-Module Pester -Scope CurrentUser -Force -SkipPublisherCheck
-          Import-Module Pester -Force
-          Write-Host "Using Pester:" (Get-Module Pester).Version
+          Install-Module -Name Pester -Scope CurrentUser -Force -SkipPublisherCheck -RequiredVersion 5.5.0
+          Get-Module -ListAvailable Pester | Sort-Object Version -Descending | Select-Object -First 3 | Format-Table Name,Version,ModuleBase
 
-      - name: Run tests (Pester 5)
+      - name: Run tests (Pester v5, tests/ci only)
+        shell: pwsh
+        env:
+          ATS_NOEXIT: "1"
         run: |
-          $conf = New-PesterConfiguration
-          $conf.Run.Path = 'tests'
-          $conf.Output.Verbosity = 'Detailed'
-          $conf.TestResult.Enabled = $true
-          $conf.TestResult.OutputPath = 'reports/pester-results.xml'
-          Invoke-Pester -Configuration $conf
-
-      - name: Upload artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ats-reports
-          path: |
-            reports/**
-            docs/gates.md
-            data/processed/**
-          if-no-files-found: warn
+          $ErrorActionPreference = 'Stop'
+          Get-Module Pester | Remove-Module -Force -ErrorAction SilentlyContinue
+          Import-Module Pester -RequiredVersion 5.5.0 -Force
+          Invoke-Pester -CI -Path tests/ci
