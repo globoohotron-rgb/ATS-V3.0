@@ -23,15 +23,13 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           Set-PSRepository PSGallery -InstallationPolicy Trusted
-          $needInstall = -not (Get-Module -ListAvailable Pester | Where-Object { $_.Version -eq [version]'5.5.0' })
-          if ($needInstall) {
-            # дозволяємо інсталяцію попри зміну видавця підпису
+          if (-not (Get-Module -ListAvailable Pester | Where-Object { $_.Version -eq [version]'5.5.0' })) {
             Install-Module -Name Pester -Scope CurrentUser -Force -RequiredVersion 5.5.0 -SkipPublisherCheck -AllowClobber
           }
           Import-Module Pester -RequiredVersion 5.5.0 -Force
           Get-Module -ListAvailable Pester | Sort-Object Version -Descending | Select-Object -First 3 | Format-Table Name,Version,ModuleBase
 
-      - name: Run tests (Pester v5, tests/ci only)
+      - name: Run tests (Pester v5 config, tests/ci only)
         shell: pwsh
         env:
           ATS_NOEXIT: "1"
@@ -40,12 +38,34 @@ jobs:
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           $junit = Join-Path $PWD 'artifacts\testResults.xml'
           $log   = Join-Path $PWD 'artifacts\pester.log'
+
           Get-Module Pester | Remove-Module -Force -ErrorAction SilentlyContinue
           Import-Module Pester -RequiredVersion 5.5.0 -Force
-          $res = Invoke-Pester -CI -Path tests/ci -OutputFormat NUnitXml -OutputFile $junit -PassThru *>&1 |
-                 Tee-Object -FilePath $log
-          "---- Pester tail ----"; if (Test-Path $log) { Get-Content $log -Tail 50 }
-          if ($null -eq $res -or ($res.FailedCount -gt 0)) { exit 1 } else { exit 0 }
+
+          # Pester v5: використовуємо Configuration object
+          $cfg = [PesterConfiguration]::Default
+          $cfg.Run.Path        = 'tests/ci'
+          $cfg.Run.PassThru    = $true
+          $cfg.Output.Verbosity = 'Detailed'
+          $cfg.TestResult.Enabled      = $true
+          $cfg.TestResult.OutputPath   = $junit
+          $cfg.TestResult.OutputFormat = 'NUnitXml'
+
+          $res = Invoke-Pester -Configuration $cfg *>&1 | Tee-Object -FilePath $log
+
+          "---- Pester tail ----"
+          if (Test-Path $log) { Get-Content $log -Tail 50 }
+
+          $failed = 1
+          if ($null -ne $res -and $res -is [Pester.Run] -and $null -ne $res.Result) {
+            $failed = [int]$res.Result.FailCount
+          } elseif ($null -ne $res -and $res.FailedCount -is [int]) {
+            $failed = [int]$res.FailedCount
+          } else {
+            $failed = 1
+          }
+
+          if ($failed -gt 0) { exit 1 } else { exit 0 }
 
       - name: Upload test artifacts
         if: always()
@@ -53,4 +73,3 @@ jobs:
         with:
           name: pester-artifacts
           path: artifacts/
-
