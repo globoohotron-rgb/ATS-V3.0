@@ -1,0 +1,7 @@
+# === ATS build artifacts ===
+/runs/
+/reports/
+*.log
+*.bak
+!runs/.gitkeep
+!reports/.gitkeep
