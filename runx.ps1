@@ -12,6 +12,9 @@ Import-Module (Join-Path $root "scripts/config.psm1") -Force
 $cfg = Get-ATSConfig
 Set-ATSProcessEnv -Cfg $cfg
 
+
+Import-Module (Join-Path $root 'scripts/ats.env.psm1') -Force
+Publish-ATSEnvGlobals
 $runner = Join-Path $root "run.ps1"
 if (!(Test-Path -LiteralPath $runner)) { throw "Runner not found: $runner" }
 
@@ -28,3 +31,4 @@ try {
 } catch {
     Write-Warning "Config snapshot failed: $($_.Exception.Message)"
 }
+
