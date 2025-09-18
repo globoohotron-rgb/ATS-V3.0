@@ -15,7 +15,7 @@ jobs:
         run: |
           $PSVersionTable
           "PSModulePath:"; ($env:PSModulePath -split ';') | ForEach-Object { "  - $_" }
-          "Repo tree:"; Get-ChildItem -Recurse -Depth 2 | Select-Object FullName
+          "Repo tree (depth=2):"; Get-ChildItem -Depth 2 | Select-Object FullName
 
       - name: Install Pester 5.5.0
         shell: pwsh
@@ -23,23 +23,44 @@ jobs:
           $ErrorActionPreference = 'Stop'
           Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
           Set-PSRepository PSGallery -InstallationPolicy Trusted
-          # pin exact version
           Install-Module -Name Pester -Scope CurrentUser -Force -RequiredVersion 5.5.0
           Get-Module -ListAvailable Pester | Sort-Object Version -Descending | Select-Object -First 5 | Format-Table Name,Version,ModuleBase
+
+      - name: Prepare artifacts folder
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "$Env:GITHUB_WORKSPACE\artifacts" | Out-Null
+          "Artifacts at: $Env:GITHUB_WORKSPACE\artifacts"
 
       - name: Run tests (Pester v5, tests/ci only)
         shell: pwsh
         env:
           ATS_NOEXIT: "1"
         run: |
-          $ErrorActionPreference = 'Stop'
+          $ErrorActionPreference = 'Continue'   # не валимо step до збереження логів
           Get-Module Pester | Remove-Module -Force -ErrorAction SilentlyContinue
           Import-Module Pester -RequiredVersion 5.5.0 -Force
-          # робимо junit-лог і зберігаємо сирий вивід
-          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
-          Invoke-Pester -CI -Path tests/ci -OutputFormat NUnitXml -OutputFile artifacts/testResults.xml *>&1 | Tee-Object -FilePath artifacts/pester.log
-          # показати коротке резюме в консолі
-          Write-Host "`n--- Pester tail ---"; Get-Content artifacts/pester.log -Tail 50
+
+          $junit = Join-Path $Env:GITHUB_WORKSPACE 'artifacts\testResults.xml'
+          $log   = Join-Path $Env:GITHUB_WORKSPACE 'artifacts\pester.log'
+
+          # запускаємо Pester і завжди збираємо сирий лог
+          $result = Invoke-Pester -CI -Path tests/ci -OutputFormat NUnitXml -OutputFile $junit -PassThru *>&1 |
+                    Tee-Object -FilePath $log
+
+          "---- Pester tail ----"
+          if (Test-Path $log) { Get-Content $log -Tail 50 } else { "no pester.log" }
+
+          # якщо з будь-якої причини результат не повернувся — вважаємо, що фейл
+          $failed = $true
+          if ($null -ne $result) {
+            # Pester 5: FailedCount; (підстрахуємось альтернативним полем Failed)
+            $fc = ($result.FailedCount, $result.Failed | Where-Object { $_ -is [int] } | Select-Object -First 1)
+            if ($null -eq $fc) { $fc = 0 }
+            $failed = [int]$fc -gt 0
+          }
+
+          if ($failed) { Write-Host "##[error] Tests failed"; exit 1 } else { Write-Host "All good 💚"; exit 0 }
 
       - name: Upload test artifacts
         if: always()
