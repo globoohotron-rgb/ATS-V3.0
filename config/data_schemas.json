@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ATS Data Schemas",
+  "version": 1,
+  "datasets": {
+    "prices": {
+      "path_glob": "data/raw/*prices*.csv",
+      "format": "csv",
+      "delimiter": ",",
+      "columns": [
+        { "name": "timestamp", "type": "datetime", "tz": "UTC", "required": true, "unique": false, "sorted": true },
+        { "name": "symbol",    "type": "string",   "required": true, "unique": false },
+        { "name": "open",      "type": "number",   "required": true, "min": 0 },
+        { "name": "high",      "type": "number",   "required": true, "min": 0 },
+        { "name": "low",       "type": "number",   "required": true, "min": 0 },
+        { "name": "close",     "type": "number",   "required": true, "min": 0 },
+        { "name": "volume",    "type": "number",   "required": false, "min": 0 }
+      ],
+      "primary_key": ["timestamp","symbol"],
+      "frequency": "1m|5m|1h|1d",
+      "gap_tolerance_seconds": 0,
+      "allow_extra_columns": false
+    },
+    "calendar": {
+      "path_glob": "data/raw/*calendar*.csv",
+      "format": "csv",
+      "delimiter": ",",
+      "columns": [
+        { "name": "date",     "type": "date",    "required": true, "sorted": true },
+        { "name": "is_open",  "type": "boolean", "required": true }
+      ],
+      "primary_key": ["date"],
+      "frequency": "1d",
+      "gap_tolerance_days": 0,
+      "allow_extra_columns": false
+    }
+  }
+}

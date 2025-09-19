@@ -5,3 +5,6 @@
 *.bak
 !runs/.gitkeep
 !reports/.gitkeep
+artifacts/**
+!artifacts/.gitkeep
+reports/**
