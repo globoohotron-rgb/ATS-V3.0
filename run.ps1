@@ -1,3 +1,12 @@
+
+# ---- DATA QC (auto-inserted) ----
+Write-Host "==> Running Data QC..." -ForegroundColor Cyan
+pwsh -NoProfile -File "scripts/Invoke-DataQC.ps1"
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "Stopping pipeline due to QC FAIL." -ForegroundColor Red
+  exit $LASTEXITCODE
+}
+# ---- /DATA QC ----
 [CmdletBinding()]
 param(
   [ValidateSet('All','G1','G2','G3','G4','G5','G6')]
@@ -126,3 +135,4 @@ switch ($Gate) {
 Write-Log "Run complete. Artifacts: $ReportPath"
 if ($env:ATS_NOEXIT -eq "1") { Write-Host "ATS_NOEXIT=1 → skip exit"; return }
 exit 0
+
