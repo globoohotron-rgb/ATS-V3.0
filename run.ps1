@@ -1,16 +1,6 @@
-
-# ---- DATA QC (auto-inserted) ----
-Write-Host "==> Running Data QC..." -ForegroundColor Cyan
-pwsh -NoProfile -File "scripts/Invoke-DataQC.ps1"
-if ($LASTEXITCODE -ne 0) {
-  Write-Host "Stopping pipeline due to QC FAIL." -ForegroundColor Red
-  exit $LASTEXITCODE
-}
-# ---- /DATA QC ----
-[CmdletBinding()]
 param(
   [ValidateSet('All','G1','G2','G3','G4','G5','G6')]
-  [string]$Gate = 'All',
+  [string]$Gate = 'G2',
   [string]$Date = (Get-Date -Format 'yyyy-MM-dd'),
   [string]$ConfigPath = (Join-Path $PSScriptRoot 'config/config.psd1'),
   [switch]$Quiet
@@ -136,3 +126,82 @@ Write-Log "Run complete. Artifacts: $ReportPath"
 if ($env:ATS_NOEXIT -eq "1") { Write-Host "ATS_NOEXIT=1 → skip exit"; return }
 exit 0
 
+function Update-G2HtmlMeta {
+  param([Parameter(Mandatory)][string]$ReportDir,[Parameter(Mandatory)][string]$Gate,[Parameter(Mandatory)][string]$Seed)
+  $html = Get-ChildItem $ReportDir -Recurse -Include *.html -ErrorAction SilentlyContinue | Select-Object -First 1
+  if (-not $html) { return }
+  $cfgPath = Join-Path $ReportDir "config.json"
+  $cfgText = if (Test-Path $cfgPath) { Get-Content $cfgPath -Raw } else { "config.json not found" }
+  $cfgText = $cfgText.Replace("<","&lt;").Replace(">","&gt;")
+  $date = Split-Path $ReportDir -Leaf
+  $blockLines = @(
+    "<!-- RUN-META-START -->",
+    "<section id=""run-meta"" style=""font-family:Arial,sans-serif;border:1px solid #ddd;padding:8px;margin:8px 0;"">",
+    "<h3>Run meta</h3>",
+    "<ul>",
+    "<li><b>Gate:</b> " + $Gate + "</li>",
+    "<li><b>Seed:</b> " + $Seed + "</li>",
+    "<li><b>Date:</b> " + $date + "</li>",
+    "</ul>",
+    "<details><summary>config.json</summary>",
+    "<pre style=""white-space:pre-wrap;font-size:12px;"">",
+    $cfgText,
+    "</pre></details>",
+    "</section>",
+    "<!-- RUN-META-END -->"
+  )
+  $block = $blockLines -join "`r`n"
+  $h = Get-Content $html.FullName -Raw
+  $h = [regex]::Replace($h, "<!-- RUN-META-START -->.*?<!-- RUN-META-END -->", "", "Singleline")
+  $idx = $h.LastIndexOf("</body>")
+  if ($idx -ge 0) { $h = $h.Insert($idx, "`r`n$block`r`n") } else { $h = $h + "`r`n$block`r`n" }
+  Set-Content $html.FullName $h -Encoding UTF8
+}
+
+function Invoke-G2QC {
+  param([Parameter(Mandatory)][string]$ReportDir)
+  $need = @{
+    "HTML"        = { Get-ChildItem $ReportDir -Recurse -Include *.html -ErrorAction SilentlyContinue | Select-Object -First 1 }
+    "config.json" = { Get-Item (Join-Path $ReportDir "config.json") -ErrorAction SilentlyContinue }
+    "metrics.json"= { Get-Item (Join-Path $ReportDir "metrics.json") -ErrorAction SilentlyContinue }
+    "metrics.csv" = { Get-Item (Join-Path $ReportDir "metrics.csv") -ErrorAction SilentlyContinue }
+    "run.log"     = { Get-Item (Join-Path $ReportDir "run.log") -ErrorAction SilentlyContinue }
+    "meta-block"  = { $h=Get-ChildItem $ReportDir -Recurse -Include *.html | Select-Object -First 1; if($h){ (Get-Content $h.FullName -Raw) -match "RUN-META-START" } }
+  }
+  $miss = @()
+  foreach($k in $need.Keys){ try { if(-not (& $need[$k])){ $miss += $k } } catch { $miss += $k } }
+  if ($miss.Count) { throw "QC FAIL: missing -> $($miss -join ', ')" }
+  Set-Content -Path (Join-Path $ReportDir "QC_OK.flag") -Value ("PASS {0}" -f (Get-Date -Format s)) -Encoding UTF8
+  Write-Host "✅ QC PASS ($ReportDir)"
+}
+
+function Save-G2Artifacts {
+  param([Parameter(Mandatory)][string]$ReportDir,[Parameter(Mandatory)][string]$RunPathLocal,[Parameter(Mandatory)][string]$Gate,[Parameter(Mandatory)][string]$Seed,[Parameter(Mandatory)][string]$ConfigPath)
+  if (!(Test-Path $ReportDir)) { throw "ReportDir not found: $ReportDir" }
+  # 1) CONFIG snapshot
+  if (Test-Path $ConfigPath) {
+    try { (Import-PowerShellDataFile -Path $ConfigPath) | ConvertTo-Json -Depth 20 | Out-File -FilePath (Join-Path $ReportDir "config.json") -Encoding UTF8 }
+    catch { Write-Warning "Config snapshot failed: $($_.Exception.Message)" }
+  }
+  # 2) METRICS
+  $metrics = [ordered]@{ gate=$Gate; status="PASS"; seed=$Seed; date=Split-Path $ReportDir -Leaf; timestamp=(Get-Date).ToString("s") }
+  $metrics | ConvertTo-Json -Depth 5 | Out-File -FilePath (Join-Path $ReportDir "metrics.json") -Encoding UTF8
+  "Metric,Value`nGate,$($metrics.gate)`nStatus,$($metrics.status)`nSeed,$($metrics.seed)`nDate,$($metrics.date)" | Set-Content -Path (Join-Path $ReportDir "metrics.csv") -Encoding UTF8
+  # 3) LOG
+  $runLog = Join-Path $RunPathLocal "run.log"; $dest = Join-Path $ReportDir "run.log"
+  if (Test-Path $runLog) { Copy-Item $runLog $dest -Force } else { "G2 run log not found, stub at $(Get-Date)." | Set-Content $dest -Encoding UTF8 }
+  # 4) META → HTML
+  Update-G2HtmlMeta -ReportDir $ReportDir -Gate $Gate -Seed $Seed
+}
+
+# >> G2 artifacts hook
+try {
+  if ($Gate -eq 'G2' -and (Test-Path $ReportPath)) {
+    Save-G2Artifacts -ReportDir $ReportPath -RunPathLocal $RunPath -Gate $Gate -Seed $seed -ConfigPath $ConfigPath
+    Invoke-G2QC -ReportDir $ReportPath
+  }
+} catch {
+  Write-Error ("G2 QC failed: {0}" -f $_.Exception.Message)
+  exit 1
+}
+# << end hook

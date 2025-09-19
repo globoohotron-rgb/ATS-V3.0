@@ -176,3 +176,7 @@ G5 verdict: PASS on 2025-09-17
   -  G5  PASS  (run 200057)
   -  G5  PASS  (run 201537)
   -  G5  PASS  (run 201917)
+2025-09-19  -  G2  PASS  (run 200133)
+2025-09-19  -  G2  PASS  (run 201153)
+2025-09-19  -  G2  PASS  (run 201249)
+2025-09-19  -  G2  PASS  (run 201753)
