@@ -15,3 +15,10 @@
 Толеранси: порядок ключів неважливий; переноси/пробіли — не причина перевипуску; числові розбіжності ±2% ок, якщо не в Acceptance.
 
 Повʼязані: [Ролі](roles.md), [Ворота](gates.md).
+<!-- >> ORDERS-LOG FORMAT -->
+## Order logs
+
+File: runs/YYYY-MM-DD/run-*/orders.log.csv
+Schema: timestamp,symbol,side,qty,price,reason,risk_state
+Purpose: unified order log for paper/live executor; used by G3/G4.
+<!-- << ORDERS-LOG FORMAT -->
