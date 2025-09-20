@@ -14,3 +14,6 @@ reports/**
 /run.ps1.*.ps1
 /run.ps1.*.bak
 /run.ps1.pre-*
+logs/
+diagnostics/
+runs/
