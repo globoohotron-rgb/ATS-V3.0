@@ -192,3 +192,12 @@ G5 verdict: PASS on 2025-09-17
 2025-09-20  -  G4  PASS  (run 225211)
 2025-09-20  -  G4  PASS  (run 230422)
 2025-09-20  -  G4  PASS  (run 231433)
+
+
+# >> G5-RULES-LINK START
+---
+### G5 правила/шаблони
+- Док: G5-rules.md
+- Шаблон вердикту: G5-Verdict.template.md
+- Шаблон EvidencePack: G5-EvidencePack.template.md
+# << G5-RULES-LINK END
