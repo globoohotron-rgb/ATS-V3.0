@@ -4,30 +4,44 @@
   Profiles       = @{
     std = @{
       Name      = 'std'
-      Align     = 'MonthStart'    # вирівнюємо на початок місяця
-      TrainBars = 756             # ≈ 3 роки (252*3)
-      OOSBars   = 21              # ≈ 1 місяць
-      StepBars  = 21              # крок WF (rolling)
-      Neighbors = 1               # перевіряти ±1 сусіднє налаштування (стабільність поруч)
+      Align     = 'MonthStart'
+      TrainBars = 756
+      OOSBars   = 21
+      StepBars  = 21
+      Neighbors = 1
       MinSample = @{
-        BarsIS     = 504          # ≥ 2 роки для тренування
-        BarsOOS    = 21           # ≥ 1 місяць для OOS
-        TradesIS   = 100          # мін. кількість угод у IS (якщо застосовно)
-        TradesOOS  = 10           # мін. кількість угод у OOS (якщо застосовно)
+        BarsIS     = 504
+        BarsOOS    = 21
+        TradesIS   = 100
+        TradesOOS  = 10
       }
     }
     compact = @{
       Name      = 'compact'
       Align     = 'MonthStart'
-      TrainBars = 504             # ≈ 2 роки
+      TrainBars = 504
       OOSBars   = 21
       StepBars  = 21
       Neighbors = 1
       MinSample = @{
-        BarsIS     = 252          # ≥ 1 рік
+        BarsIS     = 252
         BarsOOS    = 21
         TradesIS   = 50
         TradesOOS  = 5
+      }
+    }
+    demo = @{
+      Name      = 'demo'
+      Align     = 'None'     # для короткої історії вирівнювання не критичне
+      TrainBars = 120
+      OOSBars   = 20
+      StepBars  = 20
+      Neighbors = 1
+      MinSample = @{
+        BarsIS     = 60
+        BarsOOS    = 20
+        TradesIS   = 10
+        TradesOOS  = 3
       }
     }
   }
