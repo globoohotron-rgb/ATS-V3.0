@@ -48,7 +48,8 @@ $rules += [pscustomobject]@{
 }
 
 # R3: Sharpe guard
-$passR3 = ($Best.Sharpe -ge $T.Sharpe_OOS_Min) -and ( if($IS.Sharpe -gt 0){ $Best.Sharpe -ge ($T.Sharpe_OOS_vs_IS_Ratio * $IS.Sharpe) } else { $true } )
+$shOk   = if ($IS.Sharpe -gt 0) { $Best.Sharpe -ge ($T.Sharpe_OOS_vs_IS_Ratio * $IS.Sharpe) } else { $true }
+$passR3 = ($Best.Sharpe -ge $T.Sharpe_OOS_Min) -and $shOk
 $rules += [pscustomobject]@{
   Key='Sharpe'; Desc="OOS Sharpe ≥ 0 & ≥0.5×IS (якщо IS>0)";
   Pass=$passR3; Val=$Best.Sharpe; Ref= if($IS.Sharpe -gt 0){ ($T.Sharpe_OOS_vs_IS_Ratio * $IS.Sharpe) } else { $T.Sharpe_OOS_Min }

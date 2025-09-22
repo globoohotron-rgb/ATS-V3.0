@@ -201,3 +201,8 @@ G5 verdict: PASS on 2025-09-17
 - Шаблон вердикту: G5-Verdict.template.md
 - Шаблон EvidencePack: G5-EvidencePack.template.md
 # << G5-RULES-LINK END
+GS-RULES-LINK START
+- 2025-09-22 — **REJECT**: PASS: GridMax. [EvidencePack](C:/Volodymyr/ATS v3.0/reports/2025-09-22/EvidencePack-203937/EvidencePack.md)
+- 2025-09-22 — **REJECT**: PASS: GridMax. [EvidencePack](C:/Volodymyr/ATS v3.0/reports/2025-09-22/EvidencePack-203738/EvidencePack.md)
+
+GS-RULES-LINK END
