@@ -10,7 +10,7 @@
       StepBars  = 21
       Neighbors = 1
       MinSample = @{
-        BarsIS     = 504
+        BarsIS     = 504  
         BarsOOS    = 21
         TradesIS   = 100
         TradesOOS  = 10

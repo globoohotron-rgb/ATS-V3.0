@@ -174,28 +174,3 @@ exit 0
 
 
 
-# === ATS Dashboard hook (8.4) ===
-# Автогенерація дашборду після ранy. Керується env-перемінними:
-#   ATS_SKIP_DASHBOARD=1   — пропустити генерацію
-#   ATS_DASH_SCOPE=OOS|IS|AUTO
-#   ATS_DASH_VERBOSE=1     — увімкнути -VerboseLog
-try {
-  $dash = Join-Path $PSScriptRoot 'dash.ps1'
-  if (Test-Path $dash) {
-    if ($env:ATS_SKIP_DASHBOARD) {
-      Write-Host '[dash] ATS_SKIP_DASHBOARD=1 — пропускаю генерацію' -ForegroundColor Yellow
-    } else {
-      $argsList = @()
-      if ($env:ATS_DASH_SCOPE)   { $argsList += @('-Scope', $env:ATS_DASH_SCOPE) }
-      if ($env:ATS_DASH_VERBOSE) { $argsList += '-VerboseLog' }
-      Write-Host '[dash] Запускаю dash.ps1...' -ForegroundColor Cyan
-      & $dash @argsList | Out-Host
-    }
-  } else {
-    Write-Warning "dash.ps1 не знайдено поруч із run.ps1 ($dash)"
-  }
-}
-catch {
-  Write-Warning ("dash.ps1 помилка: " + $_.Exception.Message)
-}
-# === /ATS Dashboard hook (8.4) ===
