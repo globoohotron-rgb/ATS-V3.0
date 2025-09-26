@@ -1,0 +1,14 @@
+[
+  {
+    "Source": "data\\processed\\.gitkeep",
+    "Dest": "attic\\data-processed-archive\\.gitkeep",
+    "Action": "dry-run",
+    "Reason": "processed-file>older-than-2"
+  },
+  {
+    "Source": "data\\processed\\signals_sample.csv",
+    "Dest": "attic\\data-processed-archive\\signals_sample.csv",
+    "Action": "dry-run",
+    "Reason": "processed-file>older-than-2"
+  }
+]
