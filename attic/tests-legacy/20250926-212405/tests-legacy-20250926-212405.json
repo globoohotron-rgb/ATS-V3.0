@@ -1,0 +1,7 @@
+{
+  "Type": "dir",
+  "Action": "dry-run",
+  "Source": "tests\\_legacy",
+  "Dest": "attic\\tests-legacy\\20250926-212405\\_legacy",
+  "Reason": "legacy-dir-pattern"
+}
