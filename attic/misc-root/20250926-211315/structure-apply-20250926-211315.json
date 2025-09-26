@@ -1,0 +1,77 @@
+[
+  {
+    "Source": ".githooks",
+    "Dest": "attic\\misc-root\\20250926-211122\\.githooks",
+    "Action": "move"
+  },
+  {
+    "Source": ".safety",
+    "Dest": "attic\\misc-root\\20250926-211122\\.safety",
+    "Action": "move"
+  },
+  {
+    "Source": "logs",
+    "Dest": "attic\\misc-root\\20250926-211122\\logs",
+    "Action": "move"
+  },
+  {
+    "Source": "tools",
+    "Dest": "attic\\misc-root\\20250926-211122\\tools",
+    "Action": "move"
+  },
+  {
+    "Source": "audit.clean.ps1",
+    "Dest": "attic\\misc-root\\20250926-211122\\audit.clean.ps1",
+    "Action": "move"
+  },
+  {
+    "Source": "day.ps1.bak-20250924-210401",
+    "Dest": "attic\\misc-root\\20250926-211122\\day.ps1.bak-20250924-210401",
+    "Action": "move"
+  },
+  {
+    "Source": "day.ps1.bak-args-20250924-211205",
+    "Dest": "attic\\misc-root\\20250926-211122\\day.ps1.bak-args-20250924-211205",
+    "Action": "move"
+  },
+  {
+    "Source": "day.ps1.bak-args-20250924-211653",
+    "Dest": "attic\\misc-root\\20250926-211122\\day.ps1.bak-args-20250924-211653",
+    "Action": "move"
+  },
+  {
+    "Source": "day.ps1.bak-autofix-20250924-211943",
+    "Dest": "attic\\misc-root\\20250926-211122\\day.ps1.bak-autofix-20250924-211943",
+    "Action": "move"
+  },
+  {
+    "Source": "day.ps1.bak-bigfix-20250925-192855",
+    "Dest": "attic\\misc-root\\20250926-211122\\day.ps1.bak-bigfix-20250925-192855",
+    "Action": "move"
+  },
+  {
+    "Source": "day.ps1.bak-orphans-20250925-185645",
+    "Dest": "attic\\misc-root\\20250926-211122\\day.ps1.bak-orphans-20250925-185645",
+    "Action": "move"
+  },
+  {
+    "Source": "day.ps1.bak-precise-20250925-191019",
+    "Dest": "attic\\misc-root\\20250926-211122\\day.ps1.bak-precise-20250925-191019",
+    "Action": "move"
+  },
+  {
+    "Source": "day.ps1.bak-precise-20250925-191946",
+    "Dest": "attic\\misc-root\\20250926-211122\\day.ps1.bak-precise-20250925-191946",
+    "Action": "move"
+  },
+  {
+    "Source": "day.ps1.bak-targeted-20250925-190413",
+    "Dest": "attic\\misc-root\\20250926-211122\\day.ps1.bak-targeted-20250925-190413",
+    "Action": "move"
+  },
+  {
+    "Source": "day.ps1.fail-20250925-195747.ps1",
+    "Dest": "attic\\misc-root\\20250926-211122\\day.ps1.fail-20250925-195747.ps1",
+    "Action": "move"
+  }
+]

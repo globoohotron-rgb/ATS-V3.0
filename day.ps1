@@ -1,4 +1,3 @@
-# day.ps1 — v0.4 (strict idempotency, scheduler-DateTime, summary)
 param(
     [string]$Goal,
     [datetime]$Date = (Get-Date).Date,

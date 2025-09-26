@@ -1,0 +1,23 @@
+{
+  "task_id": "T-20250916-003",
+  "from": "monitor",
+  "to": "accountant",
+  "phase": "report",
+  "status": "DONE",
+  "attempt": 1,
+  "timestamp_utc": "2025-09-16T16:10:08Z",
+  "payload_ref": "reports/2025-09-16/MiniATS-run-20250916-161008.html",
+  "artifacts": [
+    "reports/2025-09-16/MiniATS-run-20250916-161008.html"
+  ],
+  "metrics": {
+    "maxdd_pct": 90.1,
+    "sharpe": 2.79,
+    "pnl_pct": 10691.77,
+    "final_equity": 107.917737
+  },
+  "notes": [
+    "offline report ready"
+  ],
+  "signature": "v1"
+}

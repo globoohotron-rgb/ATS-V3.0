@@ -17,3 +17,39 @@ reports/**
 logs/
 diagnostics/
 runs/
+# === generated artifacts ===
+reports/
+runs/
+logs/
+*.bak
+*.tmp
+*-bak-*
+*.fail-*
+# IDE local
+.vscode/
+
+### >>> ATS CLEANUP BLOCK (managed) >>>
+# OS / editors junk
+.DS_Store
+Thumbs.db
+*~
+.~lock*
+*.tmp
+*.bak
+*.old
+*.orig
+
+# Logs
+*.log
+
+# Generated / transient directories (kept out of Git)
+runs/
+digests/
+logs/
+artifacts/
+data/raw/
+data/processed/
+
+# NOTE: do NOT ignore attic/ — we commit quarantine history intentionally.
+### <<< ATS CLEANUP BLOCK (managed) <<<
+

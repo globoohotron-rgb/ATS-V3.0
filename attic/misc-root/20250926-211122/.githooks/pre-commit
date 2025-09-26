@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+set -euo pipefail
+pwsh -NoProfile -ExecutionPolicy Bypass -File "tools/guard-ast.ps1"

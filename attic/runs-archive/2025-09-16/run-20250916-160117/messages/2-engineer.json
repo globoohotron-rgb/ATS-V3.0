@@ -1,0 +1,20 @@
+{
+  "task_id": "T-20250916-002",
+  "from": "engineer",
+  "to": "supervisor",
+  "phase": "run",
+  "status": "DONE",
+  "attempt": 1,
+  "timestamp_utc": "2025-09-16T16:01:17Z",
+  "payload_ref": "runs/2025-09-16/run-20250916-160117/hello.txt",
+  "artifacts": [
+    "runs/2025-09-16/run-20250916-160117/hello.txt"
+  ],
+  "metrics": {
+    "bytes": 69
+  },
+  "notes": [
+    "artifact created"
+  ],
+  "signature": "v1"
+}
