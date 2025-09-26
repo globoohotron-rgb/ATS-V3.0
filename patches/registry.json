@@ -1,3 +1,11 @@
 {
-  "applied": []
+  "applied": [
+    {
+      "ts": "2025-09-25T20:58:32",
+      "commit": "53affa7",
+      "hash": "B784E168722A4355163BF36CA345DF6B3E52FC17FCBEB4486FC676E9B02BBE13",
+      "name": "Integrate ShadowTracker into day.ps1 with RED flags",
+      "id": "20250925-9_2-shadow"
+    }
+  ]
 }

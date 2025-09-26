@@ -17,3 +17,13 @@ reports/**
 logs/
 diagnostics/
 runs/
+# === generated artifacts ===
+reports/
+runs/
+logs/
+*.bak
+*.tmp
+*-bak-*
+*.fail-*
+# IDE local
+.vscode/
