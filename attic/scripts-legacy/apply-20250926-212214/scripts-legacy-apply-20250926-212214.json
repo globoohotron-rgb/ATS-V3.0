@@ -1,0 +1,117 @@
+[
+  {
+    "Source": "scripts\\ats.psm1.bak.20250917-204336",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\ats.psm1.bak.20250917-204336",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\ats.psm1.bak.20250917-204957",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\ats.psm1.bak.20250917-204957",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\ats.psm1.bak.20250917-205002",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\ats.psm1.bak.20250917-205002",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\ats.psm1.bak.20250917-205526",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\ats.psm1.bak.20250917-205526",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\ats.psm1.bak.20250917-210047",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\ats.psm1.bak.20250917-210047",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\ats.psm1.bak.20250917-210656",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\ats.psm1.bak.20250917-210656",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\ats.psm1.bak.20250917-212013",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\ats.psm1.bak.20250917-212013",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\g5.costs_bh.selftest.ps1",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\g5.costs_bh.selftest.ps1",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\g5.evidence.selftest.ps1",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\g5.evidence.selftest.ps1",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\g5.guard.selftest.ps1",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\g5.guard.selftest.ps1",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\g5.report.selftest.ps1",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\g5.report.selftest.ps1",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\g5.selftest.ps1",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\g5.selftest.ps1",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\g5.wf.run.selftest.ps1",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\g5.wf.run.selftest.ps1",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\g5.wf.selftest.ps1",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\g5.wf.selftest.ps1",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\patch.ps1.bak-20250919-210910",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\patch.ps1.bak-20250919-210910",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\_backup\\run_ps1\\run.ps1.4_3-backup-20250919-201152.ps1",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\_backup\\run_ps1\\run.ps1.4_3-backup-20250919-201152.ps1",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\_backup\\run_ps1\\run.ps1.4_4-4_5-backup-20250919-201752.ps1",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\_backup\\run_ps1\\run.ps1.4_4-4_5-backup-20250919-201752.ps1",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\_backup\\run_ps1\\run.ps1.backup-20250919-194844.ps1",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\_backup\\run_ps1\\run.ps1.backup-20250919-194844.ps1",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\_backup\\run_ps1\\run.ps1.bak",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\_backup\\run_ps1\\run.ps1.bak",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\_backup\\run_ps1\\run.ps1.fix-writelog-20250919-195829.bak",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\_backup\\run_ps1\\run.ps1.fix-writelog-20250919-195829.bak",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\_backup\\run_ps1\\run.ps1.fixhdr-20250919-195550.bak",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\_backup\\run_ps1\\run.ps1.fixhdr-20250919-195550.bak",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\_backup\\run_ps1\\run.ps1.headerfix-v3-20250919-195218.bak",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\_backup\\run_ps1\\run.ps1.headerfix-v3-20250919-195218.bak",
+    "Action": "move"
+  },
+  {
+    "Source": "scripts\\_backup\\run_ps1\\run.ps1.pre-cmdletbinding.bak",
+    "Dest": "attic\\scripts-legacy\\20250926-211957\\_backup\\run_ps1\\run.ps1.pre-cmdletbinding.bak",
+    "Action": "move"
+  }
+]

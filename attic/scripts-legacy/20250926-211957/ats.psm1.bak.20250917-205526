@@ -1,0 +1,89 @@
+#requires -Version 7
+# ats.psm1 — хелпери для ATS
+function Ensure-Dir{ param([string]$Path) if($Path -and -not (Test-Path $Path)){ New-Item -ItemType Directory -Force -Path $Path | Out-Null } }
+function Write-Doc{ param([string]$Path,[string[]]$Lines) $d=Split-Path $Path; Ensure-Dir $d; ($Lines -join "`r`n") | Set-Content -Path $Path -Encoding UTF8 }
+function Write-Json{ param([string]$Path,$Obj) $d=Split-Path $Path; Ensure-Dir $d; $Obj | ConvertTo-Json -Depth 12 | Set-Content -Path $Path -Encoding UTF8 }
+function SMA{ param([double[]]$vals,[int]$win) $n=$vals.Count; $out=New-Object double[] $n; for($i=0;$i -lt $n;$i++){ if($i+1 -ge $win){ $s=0.0; for($j=$i-$win+1;$j -le $i;$j++){$s+=$vals[$j]} $out[$i]=$s/$win } else { $out[$i]=[double]::NaN } } ,$out }
+function StdDev{ param([double[]]$arr) $a=@($arr | Where-Object { $_ -ne $null }); $n=$a.Count; if($n -lt 2){return 0.0}; $m=($a | Measure-Object -Average).Average; $s=0.0; foreach($x in $a){ $d=$x-$m; $s+=$d*$d } [Math]::Sqrt($s/($n-1)) }
+function MaxDrawdown{ param([double[]]$equity) if($equity.Count -eq 0){return 0.0}; $peak=$equity[0]; $m=0.0; foreach($e in $equity){ if($e -gt $peak){$peak=$e}; if($peak -gt 0){ $dd=($peak-$e)/$peak; if($dd -gt $m){$m=$dd} } } $m }
+function New-RunContext{ param([string]$Gate,[string]$SubFolder) $today=Get-Date -Format "yyyy-MM-dd"; $runId="run-$([DateTime]::UtcNow.ToString("yyyyMMdd-HHmmss"))"; $root=Join-Path (Join-Path "runs" $today) $runId; Ensure-Dir $root; $gateDir= if($SubFolder){ Join-Path $root $SubFolder } else { $root }; $msg=Join-Path $gateDir "messages"; $rep=Join-Path "reports" $today; Ensure-Dir $gateDir; Ensure-Dir $msg; Ensure-Dir $rep; [pscustomobject]@{ Today=$today; RunId=$runId; NowUtc=[DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"); Root=$root; GateDir=$gateDir; Messages=$msg; Reports=$rep } }
+Export-ModuleMember -Function Ensure-Dir,Write-Doc,Write-Json,SMA,StdDev,MaxDrawdown,New-RunContext
+
+# === TXCOST HELPERS START ===
+function Get-AtsConfigTxBps {
+  param([double]$OverrideBps)
+  if ($PSBoundParameters.ContainsKey('OverrideBps') -and $OverrideBps) { return [double]$OverrideBps }
+  $cfgPath = Join-Path $PSScriptRoot 'config.psd1'
+  if (Test-Path $cfgPath) {
+    $cfg = Import-PowerShellDataFile $cfgPath
+    if ($cfg.ContainsKey('TxCostBps')) { return [double]$cfg.TxCostBps }
+  }
+  return 8
+}
+
+function Resolve-TxColumns {
+  param([object]$Row)
+  $names = $Row.PSObject.Properties | ForEach-Object Name
+  $price = @('Price','FillPrice','ExecPrice','AvgPrice') | Where-Object { $names -contains $_ } | Select-Object -First 1
+  $qty   = @('Qty','Quantity','Size','Filled','ExecQty') | Where-Object { $names -contains $_ } | Select-Object -First 1
+  $pnl   = @('PnL','Pnl','Profit','NetProfit')          | Where-Object { $names -contains $_ } | Select-Object -First 1
+  [ordered]@{ Price=$price; Qty=$qty; PnL=$pnl }
+}
+
+function Get-TxTurnover {
+  param([IEnumerable]$Trades, [string]$PriceCol, [string]$QtyCol)
+  if (-not $Trades) { return 0.0 }
+  $sum = 0.0
+  foreach ($t in $Trades) {
+    $price = [double]($t.$PriceCol)
+    $qty   = [double]($t.$QtyCol)
+    $sum  += [math]::Abs($price * $qty)
+  }
+  $sum
+}
+
+function Get-TxCost { param([double]$Turnover,[double]$Bps) $Turnover * ($Bps / 10000.0) }
+
+function Add-TxCostToTrades {
+  param([IEnumerable]$Trades,[double]$Bps,[string]$PriceCol,[string]$QtyCol)
+  if (-not $Trades) { return @() }
+  $out = @()
+  foreach ($t in $Trades) {
+    $p=[double]($t.$PriceCol); $q=[double]($t.$QtyCol)
+    $turn=[math]::Abs($p*$q); $tx=$turn*($Bps/10000.0)
+    $obj=[PSCustomObject]@{}
+    $t.PSObject.Properties | ForEach-Object { $obj | Add-Member NoteProperty $_.Name $_.Value }
+    $obj | Add-Member NoteProperty TxTurnover ([math]::Round($turn,6))
+    $obj | Add-Member NoteProperty TxBps      ([math]::Round($Bps,6))
+    $obj | Add-Member NoteProperty TxCost     ([math]::Round($tx,6))
+    if ($obj.PSObject.Properties.Name -contains 'PnL') { $obj | Add-Member NoteProperty NetPnL ([double]$obj.PnL - [double]$tx) }
+    $out += $obj
+  }
+  $out
+}
+
+function Apply-TxToMetrics {
+  param([Parameter(Mandatory)]$Metrics,[Parameter(Mandatory)][IEnumerable]$Trades,[double]$Bps)
+  $bps = Get-AtsConfigTxBps -OverrideBps $Bps
+  $cols = Resolve-TxColumns -Row ($Trades | Select-Object -First 1)
+  if (-not $cols.Price -or -not $cols.Qty) { return $Metrics }
+  $turn = Get-TxTurnover -Trades $Trades -PriceCol $cols.Price -QtyCol $cols.Qty
+  $cost = Get-TxCost -Turnover $turn -Bps $bps
+  $m = [ordered]@{}
+  if ($Metrics -is [hashtable]) { $Metrics.Keys | ForEach-Object { $m[$_]=$Metrics[$_] } }
+  else { $Metrics.PSObject.Properties | ForEach-Object { $m[$_.Name]=$_.Value } }
+  if ($m.Contains('PnL')) { $m['PnLNet'] = [double]$m['PnL'] - [double]$cost }
+  $m['TxCostBps']  = $bps
+  $m['TxTurnover'] = [math]::Round($turn,2)
+  $m['TxCost']     = [math]::Round($cost,2)
+  [PSCustomObject]$m
+}
+
+function Use-TxInsideBacktest {
+  param([Parameter(Mandatory)][IEnumerable]$Trades,[Parameter(Mandatory)]$Metrics,[double]$Bps)
+  $bps = Get-AtsConfigTxBps -OverrideBps $Bps
+  $cols = Resolve-TxColumns -Row ($Trades | Select-Object -First 1)
+  if ($cols.Price -and $cols.Qty) { $null = Add-TxCostToTrades -Trades $Trades -Bps $bps -PriceCol $cols.Price -QtyCol $cols.Qty }
+  Apply-TxToMetrics -Metrics $Metrics -Trades $Trades -Bps $bps
+}
+# === TXCOST HELPERS END ===
