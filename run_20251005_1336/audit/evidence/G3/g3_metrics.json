@@ -1,0 +1,22 @@
+{
+  "performance": {
+    "is_sharpe_after_costs": 0.516326,
+    "is_sharpe_before_costs": 0.375346
+  },
+  "exposures": {
+    "net_min": 0.0,
+    "net_max": 1.0,
+    "turnover_mean": 1.0,
+    "gross_mean": 0.5,
+    "leverage_max": 1.0,
+    "gross_max": 1.0,
+    "turnover_max": 1.0
+  },
+  "seed": 1337,
+  "costs": {
+    "borrow_total": 0.0,
+    "commissions_total": 0.01,
+    "slippage_total": 0.005,
+    "funding_total": 0.0
+  }
+}

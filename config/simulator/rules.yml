@@ -1,0 +1,6 @@
+rules:
+  reject_if:
+    max_price_gap_bps: 100
+    max_notional: TODO
+  pause_if:
+    max_rejects_pct: TODO

@@ -1,0 +1,19 @@
+features:
+  - id: f_sample_ema
+    inputs:
+      dataset: sample_ds
+      columns: price
+    windows: 5,20
+    transform: ema
+    leakage_guard: lag>=1
+    normalization: zscore
+    drop_if_missing_pct: TODO
+  - id: f_sample_diff
+    inputs:
+      dataset: sample_ds
+      columns: price
+    windows: 1
+    transform: diff
+    leakage_guard: lag>=1
+    normalization: none
+    drop_if_missing_pct: TODO

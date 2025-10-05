@@ -1,0 +1,24 @@
+{
+  "sample_ds": {
+    "invalids_count": 0,
+    "anomalies_count": 0,
+    "cols": 0,
+    "id": "sample_ds",
+    "decision": "NEEDS_THRESHOLD",
+    "gap_pct": 0.0,
+    "artifacts": [
+      "C:\\Volodymyr\\ATS v3.0\\run_20251005_1336\\audit\\G0\\schema_sample_ds.yml",
+      "C:\\Volodymyr\\ATS v3.0\\run_20251005_1336\\audit\\G0\\gaps_sample_ds.csv",
+      "C:\\Volodymyr\\ATS v3.0\\run_20251005_1336\\audit\\G0\\duplicates_sample_ds.csv",
+      "C:\\Volodymyr\\ATS v3.0\\run_20251005_1336\\audit\\G0\\issues_sample_ds.csv",
+      "C:\\Volodymyr\\ATS v3.0\\run_20251005_1336\\audit\\G0\\anomalies_sample_ds.csv",
+      "C:\\Volodymyr\\ATS v3.0\\run_20251005_1336\\audit\\G0\\leakage_sample_ds.csv"
+    ],
+    "dupe_pct": 0,
+    "rows": 0,
+    "leakage_found": false,
+    "reasons": [],
+    "exists": false,
+    "missing_pct": 0.0
+  }
+}

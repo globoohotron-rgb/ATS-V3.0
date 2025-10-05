@@ -1,3 +1,9 @@
+# --- A1 FIX: robust $repRoot even if $PSScriptRoot is $null ---
+$__here = $PSScriptRoot
+if (-not $__here) { try { $__here = Split-Path -Parent $MyInvocation.MyCommand.Path } catch {} }
+if (-not $__here) { $__here = (Get-Location).Path }
+$repRoot = Split-Path -Parent $__here
+# --- /A1 FIX ---
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
@@ -32,3 +38,4 @@ Describe "Data QC (targeted, inline)" {
     $s.overall_pass | Should -BeFalse
   }
 }
+

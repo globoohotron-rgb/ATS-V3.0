@@ -1,0 +1,7 @@
+datasets:
+  - id: sample_ds
+    path: data/sample.csv
+    freq: daily
+    date_column: date
+    symbol_key: symbol
+    timezone: UTC

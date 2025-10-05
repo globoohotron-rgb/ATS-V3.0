@@ -1,0 +1,6 @@
+tests:
+  max_missing_pct: TODO
+  min_variance: TODO
+  max_pearson_abs: TODO
+  drift_window: 4
+  psi_max: TODO

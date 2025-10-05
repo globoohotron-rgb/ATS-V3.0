@@ -1,0 +1,5 @@
+model_id,type,params,objective,is_sharpe,cagr,maxdd,trades,winrate,turnover
+model_id: m_momentum,unknown,{},Sharpe,0,0,0,0,0,0
+model_id: m_momentum,unknown,{},Sharpe,0,0,0,0,0,0
+model_id: m_meanrev,unknown,{},Sharpe,0,0,0,0,0,0
+model_id: m_baseline,unknown,{},Sharpe,0,0,0,0,0,0

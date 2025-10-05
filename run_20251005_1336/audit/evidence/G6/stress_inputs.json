@@ -1,0 +1,39 @@
+{
+  "seed": 1337,
+  "thresholds": {
+    "max_dd_intraday": "MISSING",
+    "max_dd_cum": "MISSING",
+    "latency_ms_p95": "MISSING",
+    "max_rejects_pct": "MISSING",
+    "max_var": "MISSING",
+    "cooldown_minutes": "MISSING"
+  },
+  "shocks": [
+    {
+      "scenario": "Shock_1",
+      "desc": "One-day -5% gap down",
+      "proxy_dd": 0.05,
+      "proxy_pnl": -0.05
+    },
+    {
+      "scenario": "Shock_2",
+      "desc": "Three days -2% step fall",
+      "proxy_dd": 0.058808,
+      "proxy_pnl": -0.06
+    },
+    {
+      "scenario": "Shock_3",
+      "desc": "Latency spike p95",
+      "proxy_latency_ms_p95": 700
+    },
+    {
+      "scenario": "Shock_4",
+      "desc": "Rejects wave",
+      "proxy_rejects_pct": 40
+    }
+  ],
+  "context": {
+    "g4_latency_p95": null,
+    "g4_rejects_pct": null
+  }
+}

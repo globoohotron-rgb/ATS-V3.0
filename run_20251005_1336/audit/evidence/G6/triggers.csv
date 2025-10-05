@@ -1,0 +1,5 @@
+scenario,metric,value,threshold,triggered
+Shock_1,dd_intraday,0,05,NA,False
+Shock_2,dd_cum,0,058808,NA,False
+Shock_3,latency_ms_p95,700,NA,False
+Shock_4,rejects_pct,40,NA,False

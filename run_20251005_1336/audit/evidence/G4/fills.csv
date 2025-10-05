@@ -1,0 +1,1 @@
+timestamp,symbol,side,qty_req,qty_filled,px_req,px_fill,latency_ms,status,slippage_bps

@@ -1,0 +1,17 @@
+{
+  "sharpe_oos": {
+    "mean": 0,
+    "median": 0,
+    "std": 0,
+    "pct_positive": 0
+  },
+  "maxdd": {
+    "mean": 0,
+    "median": 0,
+    "std": 0
+  },
+  "trades": {
+    "mean": 0,
+    "median": 0
+  }
+}

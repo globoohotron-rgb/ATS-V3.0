@@ -1,0 +1,6 @@
+costs:
+  commissions_bps: 1.0
+  slippage_bps: 0.5
+  borrow_rate_annual: 0.05
+  funding_rate_daily: 0.0
+  min_ticket_cost: 0.00

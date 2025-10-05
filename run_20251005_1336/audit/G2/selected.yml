@@ -1,0 +1,10 @@
+selected:
+  model_id: model_id: m_momentum
+  params: {}
+  metrics:
+    is_sharpe: 0
+    cagr: 0
+    maxdd: 0
+    trades: 0
+    winrate: 0
+    turnover: 0

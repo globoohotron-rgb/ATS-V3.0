@@ -1,0 +1,7 @@
+limits:
+  max_gross_exposure: 1.0
+  max_net_exposure: 1.0
+  max_leverage: 1.0
+  max_pos_per_symbol: 1.0
+  max_daily_turnover: 1.0
+  max_notional_per_trade: 1.0

@@ -1,0 +1,20 @@
+engine:
+  clock: bar
+  bar_price: open_next_bar
+  latency_ms:
+    base: 50
+    jitter_ms: 10
+  order_types: [market, limit, stop]
+  limit_fill_bps: 5
+  capacity:
+    max_qty_per_bar: TODO
+  partial_fill:
+    mode: queue_fraction
+    q25: 0.25
+    q50: 0.5
+    q75: 0.75
+  cancel_policy: DAY
+  trading_hours:
+    tz: UTC
+    open: 09:30
+    close: 16:00

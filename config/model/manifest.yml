@@ -1,0 +1,24 @@
+models:
+  - id: m_momentum
+    type: momentum
+    features: [f_sample_ema]
+    params:
+      window: 10
+      threshold: 0.0
+    objective: Sharpe
+    seed: 1337
+  - id: m_meanrev
+    type: meanreversion
+    features: [f_sample_diff]
+    params:
+      z_window: 20
+      threshold: 0.0
+    objective: Sharpe
+    seed: 1337
+  - id: m_baseline
+    type: baseline
+    features: []
+    params:
+      bias: 0
+    objective: Sharpe
+    seed: 1337

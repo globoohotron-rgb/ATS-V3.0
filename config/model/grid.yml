@@ -1,0 +1,16 @@
+grid:
+  - model_id: m_momentum
+    params:
+      window: 10
+      threshold: 0.0
+  - model_id: m_momentum
+    params:
+      window: 20
+      threshold: 0.0
+  - model_id: m_meanrev
+    params:
+      z_window: 20
+      threshold: 0.0
+  - model_id: m_baseline
+    params:
+      bias: 0
